@@ -1,5 +1,15 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { randomUUID } from 'crypto';
+
+// Polyfill pour crypto.randomUUID() si non disponible
+if (typeof crypto === 'undefined') {
+  global.crypto = {
+    randomUUID: randomUUID
+  } as any;
+} else if (typeof crypto.randomUUID === 'undefined') {
+  crypto.randomUUID = randomUUID;
+}
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -9,15 +19,22 @@ import { WrapResponseInterceptor } from './common/interceptors/wrap-response.int
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(helmet());
+  const corsOrigins = process.env.CORS_ORIGIN
+    ? [...process.env.CORS_ORIGIN.split(','), 'http://localhost:5173', 'http://192.168.0.110:5173']
+    : [
+        'http://localhost:5173',
+        'http://192.168.0.110:5173',
+        'http://10.0.2.2:5173',
+        'capacitor://localhost',
+        'http://localhost',
+        'https://localhost'
+      ];
+
+  console.log('🔧 CORS Origins configured:', corsOrigins);
+
   app.enableCors({
-    origin: [
-      'http://localhost:5173',
-      'http://192.168.0.110:5173',
-      'http://10.0.2.2:5173',
-      'capacitor://localhost',
-      'http://localhost',
-      'https://localhost'
-    ],
+    origin: corsOrigins,
+    credentials: true,
   });
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new WrapResponseInterceptor());
